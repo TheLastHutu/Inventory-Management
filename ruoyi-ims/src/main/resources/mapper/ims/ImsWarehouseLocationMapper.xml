@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.ims.mapper.ImsWarehouseLocationMapper">
+    
+    <resultMap type="ImsWarehouseLocation" id="ImsWarehouseLocationResult">
+        <result property="id"    column="id"    />
+        <result property="locationCode"    column="location_code"    />
+        <result property="locationName"    column="location_name"    />
+        <result property="warehouseId"    column="warehouse_id"    />
+        <result property="warehouseName"    column="warehouse_name"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectImsWarehouseLocationVo">
+        select l.id, l.location_code, l.location_name, l.warehouse_id, w.warehouse_name,
+               l.status, l.create_by, l.create_time, l.update_by, l.update_time, l.remark
+        from ims_warehouse_location l
+        left join ims_warehouse w on l.warehouse_id = w.id
+    </sql>
+
+    <select id="selectImsWarehouseLocationList" parameterType="ImsWarehouseLocation" resultMap="ImsWarehouseLocationResult">
+        <include refid="selectImsWarehouseLocationVo"/>
+        <where>  
+            <if test="locationCode != null  and locationCode != ''"> and l.location_code = #{locationCode}</if>
+            <if test="locationName != null  and locationName != ''"> and l.location_name like concat('%', #{locationName}, '%')</if>
+            <if test="warehouseId != null "> and l.warehouse_id = #{warehouseId}</if>
+            <if test="status != null  and status != ''"> and l.status = #{status}</if>
+        </where>
+        order by l.create_time desc, l.id desc
+    </select>
+    
+    <select id="selectImsWarehouseLocationById" parameterType="Long" resultMap="ImsWarehouseLocationResult">
+        <include refid="selectImsWarehouseLocationVo"/>
+        where l.id = #{id}
+    </select>
+
+    <insert id="insertImsWarehouseLocation" parameterType="ImsWarehouseLocation" useGeneratedKeys="true" keyProperty="id">
+        insert into ims_warehouse_location
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="locationCode != null and locationCode != ''">location_code,</if>
+            <if test="locationName != null and locationName != ''">location_name,</if>
+            <if test="warehouseId != null">warehouse_id,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="locationCode != null and locationCode != ''">#{locationCode},</if>
+            <if test="locationName != null and locationName != ''">#{locationName},</if>
+            <if test="warehouseId != null">#{warehouseId},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateImsWarehouseLocation" parameterType="ImsWarehouseLocation">
+        update ims_warehouse_location
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="locationCode != null and locationCode != ''">location_code = #{locationCode},</if>
+            <if test="locationName != null and locationName != ''">location_name = #{locationName},</if>
+            <if test="warehouseId != null">warehouse_id = #{warehouseId},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteImsWarehouseLocationById" parameterType="Long">
+        delete from ims_warehouse_location where id = #{id}
+    </delete>
+
+    <delete id="deleteImsWarehouseLocationByIds" parameterType="String">
+        delete from ims_warehouse_location where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

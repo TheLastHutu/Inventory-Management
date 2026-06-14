@@ -1,0 +1,73 @@
+<template>
+  <el-drawer title="品牌管理详情" :visible.sync="visible" direction="rtl" size="60%" append-to-body :before-close="handleClose" custom-class="detail-drawer">
+    <div v-loading="loading" class="drawer-content">
+      <h4 class="section-header">基本信息</h4>
+      <el-row :gutter="20" class="mb8">
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">品牌编码：</label>
+            <span class="info-value plaintext">
+              {{ info.brandCode }}
+            </span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">品牌名称：</label>
+            <span class="info-value plaintext">
+              {{ info.brandName }}
+            </span>
+          </div>
+        </el-col>
+      </el-row>
+      <el-row :gutter="20" class="mb8">
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">状态：</label>
+            <span class="info-value plaintext">
+              <dict-tag :options="dict.type.ims_status" :value="info.status" />
+            </span>
+          </div>
+        </el-col>
+        <el-col :span="12">
+          <div class="info-item">
+            <label class="info-label">备注：</label>
+            <span class="info-value plaintext">
+              {{ info.remark }}
+            </span>
+          </div>
+        </el-col>
+      </el-row>
+    </div>
+  </el-drawer>
+</template>
+
+<script>
+import { getIms_brand } from '@/api/ims/ims_brand'
+
+export default {
+  name: 'Ims_brandViewDrawer',
+  dicts: ['ims_status', ],
+  data() {
+    return {
+      visible: false,
+      loading: false,
+      info: {}
+    }
+  },
+  methods: {
+    open(id) {
+      this.visible = true
+      this.loading = true
+      getIms_brand(id).then(res => {
+        this.info = res.data || {}
+      }).finally(() => {
+        this.loading = false
+      })
+    },
+    handleClose() {
+      this.visible = false
+    }
+  }
+}
+</script>

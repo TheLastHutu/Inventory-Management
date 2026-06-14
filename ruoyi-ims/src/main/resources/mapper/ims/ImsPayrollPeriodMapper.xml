@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.ims.mapper.ImsPayrollPeriodMapper">
+    
+    <resultMap type="ImsPayrollPeriod" id="ImsPayrollPeriodResult">
+        <result property="periodId"    column="period_id"    />
+        <result property="deptId"    column="dept_id"    />
+        <result property="deptName"    column="dept_name"    />
+        <result property="employeeId"    column="employee_id"    />
+        <result property="employeeName"    column="employee_name"    />
+        <result property="periodCode"    column="period_code"    />
+        <result property="status"    column="status"    />
+        <result property="netPay"    column="net_pay"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <resultMap id="ImsPayrollPeriodImsPayrollDetailResult" type="ImsPayrollPeriod" extends="ImsPayrollPeriodResult">
+        <collection property="imsPayrollDetailList" ofType="ImsPayrollDetail" column="period_id" select="selectImsPayrollDetailList" />
+    </resultMap>
+
+    <resultMap type="ImsPayrollDetail" id="ImsPayrollDetailResult">
+        <result property="detailId"    column="detail_id"    />
+        <result property="periodId"    column="period_id"    />
+        <result property="employeeId"    column="employee_id"    />
+        <result property="employeeName"    column="employee_name"    />
+        <result property="attendanceDays"    column="attendance_days"    />
+        <result property="baseSalary"    column="base_salary"    />
+        <result property="commission"    column="commission"    />
+        <result property="allowance"    column="allowance"    />
+        <result property="bonus"    column="bonus"    />
+        <result property="deduction"    column="deduction"    />
+        <result property="netPay"    column="net_pay"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectImsPayrollPeriodVo">
+        select p.period_id, p.dept_id, d.dept_name, pd.employee_id, e.employee_name,
+               p.period_code, p.status, ifnull(pd.net_pay, 0) as net_pay,
+               p.create_by, p.create_time, p.update_by, p.update_time, p.remark 
+        from ims_payroll_period p
+        left join sys_dept d on p.dept_id = d.dept_id
+        left join (
+            select period_id, min(employee_id) as employee_id, sum(ifnull(net_pay, 0)) as net_pay
+            from ims_payroll_detail
+            group by period_id
+        ) pd on p.period_id = pd.period_id
+        left join ims_employee e on pd.employee_id = e.id
+    </sql>
+
+    <select id="selectImsPayrollPeriodList" parameterType="ImsPayrollPeriod" resultMap="ImsPayrollPeriodResult">
+        <include refid="selectImsPayrollPeriodVo"/>
+        <where>  
+            <if test="deptId != null "> and p.dept_id = #{deptId}</if>
+            <if test="employeeId != null ">
+                and exists (
+                    select 1 from ims_payroll_detail ed
+                    where ed.period_id = p.period_id and ed.employee_id = #{employeeId}
+                )
+            </if>
+            <if test="periodCode != null  and periodCode != ''"> and p.period_code = #{periodCode}</if>
+            <if test="params.beginTime != null and params.beginTime != ''"><!-- 开始月份 --> and p.period_code &gt;= #{params.beginTime}</if>
+            <if test="params.endTime != null and params.endTime != ''"><!-- 结束月份 --> and p.period_code &lt;= #{params.endTime}</if>
+            <if test="status != null  and status != ''"> and p.status = #{status}</if>
+        </where>
+        order by p.period_code desc, p.create_time desc, p.period_id desc
+    </select>
+    
+    <select id="selectImsPayrollPeriodByPeriodId" parameterType="Long" resultMap="ImsPayrollPeriodImsPayrollDetailResult">
+        select p.period_id, p.dept_id, d.dept_name, pd.employee_id, e.employee_name,
+               p.period_code, p.status, ifnull(pd.net_pay, 0) as net_pay,
+               p.create_by, p.create_time, p.update_by, p.update_time, p.remark 
+        from ims_payroll_period p
+        left join sys_dept d on p.dept_id = d.dept_id
+        left join (
+            select period_id, min(employee_id) as employee_id, sum(ifnull(net_pay, 0)) as net_pay
+            from ims_payroll_detail
+            group by period_id
+        ) pd on p.period_id = pd.period_id
+        left join ims_employee e on pd.employee_id = e.id
+        where p.period_id = #{periodId}
+    </select>
+
+    <select id="selectImsPayrollDetailList" resultMap="ImsPayrollDetailResult">
+        select d.detail_id, d.period_id, d.employee_id, e.employee_name, d.attendance_days, d.base_salary,
+               d.commission, d.allowance, d.bonus, d.deduction, d.net_pay,
+               d.create_by, d.create_time, d.update_by, d.update_time, d.remark
+        from ims_payroll_detail d
+        left join ims_employee e on d.employee_id = e.id
+        where d.period_id = #{period_id}
+    </select>
+
+    <insert id="insertImsPayrollPeriod" parameterType="ImsPayrollPeriod" useGeneratedKeys="true" keyProperty="periodId">
+        insert into ims_payroll_period
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">dept_id,</if>
+            <if test="periodCode != null and periodCode != ''">period_code,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptId != null">#{deptId},</if>
+            <if test="periodCode != null and periodCode != ''">#{periodCode},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateImsPayrollPeriod" parameterType="ImsPayrollPeriod">
+        update ims_payroll_period
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="deptId != null">dept_id = #{deptId},</if>
+            <if test="periodCode != null and periodCode != ''">period_code = #{periodCode},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where period_id = #{periodId}
+    </update>
+
+    <delete id="deleteImsPayrollPeriodByPeriodId" parameterType="Long">
+        delete from ims_payroll_period where period_id = #{periodId}
+    </delete>
+
+    <delete id="deleteImsPayrollPeriodByPeriodIds" parameterType="String">
+        delete from ims_payroll_period where period_id in 
+        <foreach item="periodId" collection="array" open="(" separator="," close=")">
+            #{periodId}
+        </foreach>
+    </delete>
+    
+    <delete id="deleteImsPayrollDetailByDetailIds" parameterType="String">
+        delete from ims_payroll_detail where detail_id in 
+        <foreach item="detailId" collection="array" open="(" separator="," close=")">
+            #{detailId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteImsPayrollDetailByPeriodIds" parameterType="String">
+        delete from ims_payroll_detail where period_id in 
+        <foreach item="periodId" collection="array" open="(" separator="," close=")">
+            #{periodId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteImsPayrollDetailByDetailId" parameterType="Long">
+        delete from ims_payroll_detail where detail_id = #{detailId}
+    </delete>
+
+    <delete id="deleteImsPayrollDetailByPeriodId" parameterType="Long">
+        delete from ims_payroll_detail where period_id = #{periodId}
+    </delete>
+
+    <insert id="batchImsPayrollDetail">
+        insert into ims_payroll_detail( period_id, employee_id, attendance_days, base_salary, commission, allowance, bonus, deduction, net_pay, create_by, create_time, update_by, update_time, remark) values
+        <foreach item="item" index="index" collection="list" separator=",">
+            ( #{item.periodId}, #{item.employeeId}, #{item.attendanceDays}, #{item.baseSalary}, #{item.commission}, #{item.allowance}, #{item.bonus}, #{item.deduction}, #{item.netPay}, #{item.createBy}, #{item.createTime}, #{item.updateBy}, #{item.updateTime}, #{item.remark})
+        </foreach>
+    </insert>
+</mapper>

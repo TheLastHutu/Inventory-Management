@@ -1,0 +1,1034 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.ai.mapper.AiInventoryToolMapper">
+
+    <select id="selectInventoryCurrentSummary" resultType="java.util.HashMap">
+        select
+            count(1) as inventoryRows,
+            count(distinct i.product_id) as productCount,
+            coalesce(sum(i.qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(i.locked_qty_piece), 0) as lockedQtyPiece,
+            coalesce(sum(i.avail_qty_piece), 0) as availQtyPiece,
+            sum(case when i.avail_qty_piece &lt;= 0 then 1 else 0 end) as zeroAvailRows,
+            sum(case when i.status = '1' then 1 else 0 end) as disabledRows
+        from ims_inventory i
+        <where>
+            <if test="enterpriseId != null">and i.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and i.warehouse_id = #{warehouseId}</if>
+        </where>
+    </select>
+
+    <select id="selectInventoryByWarehouse" resultType="java.util.HashMap">
+        select
+            i.warehouse_id as warehouseId,
+            coalesce(w.warehouse_name, concat('仓库#', i.warehouse_id)) as warehouseName,
+            count(1) as inventoryRows,
+            count(distinct i.product_id) as productCount,
+            coalesce(sum(i.qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(i.locked_qty_piece), 0) as lockedQtyPiece,
+            coalesce(sum(i.avail_qty_piece), 0) as availQtyPiece
+        from ims_inventory i
+        left join ims_warehouse w on w.id = i.warehouse_id
+        <where>
+            <if test="enterpriseId != null">and i.enterprise_id = #{enterpriseId}</if>
+        </where>
+        group by i.warehouse_id, w.warehouse_name
+        order by totalQtyPiece desc
+        limit 20
+    </select>
+
+    <select id="selectInventoryLowStockList" resultType="java.util.HashMap">
+        select
+            i.product_id as productId,
+            coalesce(p.product_name, concat('产品#', i.product_id)) as productName,
+            i.warehouse_id as warehouseId,
+            coalesce(w.warehouse_name, concat('仓库#', i.warehouse_id)) as warehouseName,
+            i.location_id as locationId,
+            i.qty_piece as qtyPiece,
+            i.locked_qty_piece as lockedQtyPiece,
+            i.avail_qty_piece as availQtyPiece
+        from ims_inventory i
+        left join ims_product p on p.id = i.product_id
+        left join ims_warehouse w on w.id = i.warehouse_id
+        <where>
+            <if test="enterpriseId != null">and i.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and i.warehouse_id = #{warehouseId}</if>
+            and i.avail_qty_piece &lt;= 0
+        </where>
+        order by i.avail_qty_piece asc, i.qty_piece asc
+        limit #{limit}
+    </select>
+
+    <select id="selectStockFlowTrend" resultType="java.util.HashMap">
+        select
+            date(f.occur_time) as occurDate,
+            coalesce(sum(case when f.`inout` = 'I' then f.qty_piece else 0 end), 0) as inboundQty,
+            coalesce(sum(case when f.`inout` = 'O' then f.qty_piece else 0 end), 0) as outboundQty,
+            coalesce(sum(case when f.`inout` = 'I' then coalesce(f.amount, 0) else 0 end), 0) as inboundAmount,
+            coalesce(sum(case when f.`inout` = 'O' then coalesce(f.amount, 0) else 0 end), 0) as outboundAmount,
+            count(1) as flowCount
+        from ims_stock_flow f
+        <where>
+            <if test="beginDate != null and beginDate != ''">and f.occur_time &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and f.occur_time &lt; date_add(#{endDate}, interval 1 day)</if>
+            <if test="enterpriseId != null">and f.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and f.warehouse_id = #{warehouseId}</if>
+        </where>
+        group by date(f.occur_time)
+        order by occurDate asc
+        limit 90
+    </select>
+
+    <select id="selectStockFlowProductRanking" resultType="java.util.HashMap">
+        select
+            f.product_id as productId,
+            coalesce(p.product_name, concat('产品#', f.product_id)) as productName,
+            coalesce(sum(case when f.`inout` = 'I' then f.qty_piece else 0 end), 0) as inboundQty,
+            coalesce(sum(case when f.`inout` = 'O' then f.qty_piece else 0 end), 0) as outboundQty,
+            coalesce(sum(coalesce(f.amount, 0)), 0) as totalAmount,
+            count(1) as flowCount
+        from ims_stock_flow f
+        left join ims_product p on p.id = f.product_id
+        <where>
+            <if test="beginDate != null and beginDate != ''">and f.occur_time &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and f.occur_time &lt; date_add(#{endDate}, interval 1 day)</if>
+            <if test="enterpriseId != null">and f.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and f.warehouse_id = #{warehouseId}</if>
+        </where>
+        group by f.product_id, p.product_name
+        order by flowCount desc, totalAmount desc
+        limit #{limit}
+    </select>
+
+    <select id="selectDamageMonthlySummary" resultType="java.util.HashMap">
+        select
+            count(1) as billCount,
+            coalesce(sum(d.total_qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(d.total_amount), 0) as totalAmount,
+            coalesce(avg(d.total_amount), 0) as avgBillAmount,
+            sum(case when d.bill_status = '0' then 1 else 0 end) as draftCount,
+            sum(case when d.bill_status = '1' then 1 else 0 end) as auditedCount,
+            sum(case when d.bill_status = '2' then 1 else 0 end) as voidCount
+        from ims_damage d
+        <where>
+            <if test="beginDate != null and beginDate != ''">and d.bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and d.bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and d.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and d.warehouse_id = #{warehouseId}</if>
+        </where>
+    </select>
+
+    <select id="selectDamageReasonSummary" resultType="java.util.HashMap">
+        select
+            coalesce(nullif(trim(d.reason), ''), '未填写原因') as reason,
+            count(1) as billCount,
+            coalesce(sum(d.total_qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(d.total_amount), 0) as totalAmount
+        from ims_damage d
+        <where>
+            <if test="beginDate != null and beginDate != ''">and d.bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and d.bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and d.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and d.warehouse_id = #{warehouseId}</if>
+        </where>
+        group by coalesce(nullif(trim(d.reason), ''), '未填写原因')
+        order by totalAmount desc
+        limit 20
+    </select>
+
+    <select id="selectDamageProductAnalysis" resultType="java.util.HashMap">
+        select
+            di.product_id as productId,
+            coalesce(p.product_name, concat('产品#', di.product_id)) as productName,
+            count(distinct d.id) as billCount,
+            count(1) as lineCount,
+            coalesce(sum(di.qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(di.amount), 0) as totalAmount
+        from ims_damage_item di
+        inner join ims_damage d on d.id = di.damage_id
+        left join ims_product p on p.id = di.product_id
+        <where>
+            <if test="beginDate != null and beginDate != ''">and d.bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and d.bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and d.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and d.warehouse_id = #{warehouseId}</if>
+        </where>
+        group by di.product_id, p.product_name
+        order by totalAmount desc, totalQtyPiece desc
+        limit #{limit}
+    </select>
+
+    <select id="selectFixedAssetSummary" resultType="java.util.HashMap">
+        select
+            count(1) as assetCount,
+            coalesce(sum(original_value), 0) as originalValue,
+            coalesce(sum(net_value), 0) as netValue,
+            coalesce(sum(original_value - net_value), 0) as depreciatedValue,
+            sum(case when status = '0' then 1 else 0 end) as activeCount,
+            sum(case when status = '1' then 1 else 0 end) as disabledCount,
+            coalesce(avg(case when original_value &gt; 0 then net_value / original_value else null end), 0) as avgNetRatio
+        from ims_fixed_asset
+        <where>
+            <if test="enterpriseId != null">and enterprise_id = #{enterpriseId}</if>
+        </where>
+    </select>
+
+    <select id="selectFixedAssetByDept" resultType="java.util.HashMap">
+        select
+            coalesce(nullif(trim(use_dept), ''), '未填写部门') as useDept,
+            count(1) as assetCount,
+            coalesce(sum(original_value), 0) as originalValue,
+            coalesce(sum(net_value), 0) as netValue,
+            sum(case when status = '0' then 1 else 0 end) as activeCount,
+            sum(case when status = '1' then 1 else 0 end) as disabledCount
+        from ims_fixed_asset
+        <where>
+            <if test="enterpriseId != null">and enterprise_id = #{enterpriseId}</if>
+        </where>
+        group by coalesce(nullif(trim(use_dept), ''), '未填写部门')
+        order by netValue desc
+        limit 20
+    </select>
+
+    <select id="selectFixedAssetDepreciationTrend" resultType="java.util.HashMap">
+        select
+            d.period_code as periodCode,
+            count(1) as recordCount,
+            coalesce(sum(d.depr_amount), 0) as deprAmount,
+            coalesce(sum(d.net_value_after), 0) as netValueAfter
+        from ims_fixed_asset_depr d
+        inner join ims_fixed_asset a on a.id = d.asset_id
+        <where>
+            <if test="beginPeriod != null and beginPeriod != ''">and d.period_code &gt;= #{beginPeriod}</if>
+            <if test="endPeriod != null and endPeriod != ''">and d.period_code &lt;= #{endPeriod}</if>
+            <if test="enterpriseId != null">and a.enterprise_id = #{enterpriseId}</if>
+            and d.status = '0'
+        </where>
+        group by d.period_code
+        order by d.period_code asc
+        limit 24
+    </select>
+
+    <select id="selectFixedAssetRiskList" resultType="java.util.HashMap">
+        select
+            id as assetId,
+            asset_code as assetCode,
+            asset_name as assetName,
+            asset_category as assetCategory,
+            use_dept as useDept,
+            keeper,
+            original_value as originalValue,
+            net_value as netValue,
+            status,
+            purchase_date as purchaseDate,
+            case
+                when status = '1' then 'stopped_or_scrapped'
+                when original_value &gt; 0 and net_value / original_value &lt;= 0.1 then 'low_net_value'
+                when update_time is null and create_time &lt; date_sub(now(), interval 365 day) then 'long_time_not_updated'
+                when update_time &lt; date_sub(now(), interval 365 day) then 'long_time_not_updated'
+                else 'watch'
+            end as riskType
+        from ims_fixed_asset
+        <where>
+            <if test="enterpriseId != null">and enterprise_id = #{enterpriseId}</if>
+            and (
+                status = '1'
+                or (original_value &gt; 0 and net_value / original_value &lt;= 0.1)
+                or (update_time is null and create_time &lt; date_sub(now(), interval 365 day))
+                or update_time &lt; date_sub(now(), interval 365 day)
+            )
+        </where>
+        order by status desc, net_value asc, purchase_date asc
+        limit #{limit}
+    </select>
+
+    <select id="selectPayrollMonthlySummary" resultType="java.util.HashMap">
+        select
+            p.period_code as periodCode,
+            count(distinct p.period_id) as periodCount,
+            count(d.detail_id) as detailCount,
+            count(distinct d.employee_id) as employeeCount,
+            coalesce(sum(d.base_salary), 0) as baseSalary,
+            coalesce(sum(d.commission), 0) as commission,
+            coalesce(sum(d.allowance), 0) as allowance,
+            coalesce(sum(d.bonus), 0) as bonus,
+            coalesce(sum(d.deduction), 0) as deduction,
+            coalesce(sum(d.net_pay), 0) as netPay,
+            coalesce(avg(d.net_pay), 0) as avgNetPay
+        from ims_payroll_period p
+        inner join ims_payroll_detail d on d.period_id = p.period_id
+        <where>
+            <if test="periodCode != null and periodCode != ''">and p.period_code = #{periodCode}</if>
+            <if test="deptId != null">and p.dept_id = #{deptId}</if>
+        </where>
+        group by p.period_code
+        order by p.period_code desc
+        limit 1
+    </select>
+
+    <select id="selectPayrollDeptCompare" resultType="java.util.HashMap">
+        select
+            p.dept_id as deptId,
+            coalesce(sd.dept_name, concat('部门#', p.dept_id)) as deptName,
+            count(d.detail_id) as detailCount,
+            count(distinct d.employee_id) as employeeCount,
+            coalesce(sum(d.net_pay), 0) as netPay,
+            coalesce(avg(d.net_pay), 0) as avgNetPay,
+            coalesce(sum(d.deduction), 0) as deduction
+        from ims_payroll_period p
+        inner join ims_payroll_detail d on d.period_id = p.period_id
+        left join sys_dept sd on sd.dept_id = p.dept_id
+        <where>
+            <if test="periodCode != null and periodCode != ''">and p.period_code = #{periodCode}</if>
+        </where>
+        group by p.dept_id, sd.dept_name
+        order by netPay desc
+        limit 20
+    </select>
+
+    <select id="selectPayrollEmployeeRanking" resultType="java.util.HashMap">
+        select
+            d.employee_id as employeeId,
+            coalesce(e.employee_name, concat('员工#', d.employee_id)) as employeeName,
+            coalesce(sd.dept_name, concat('部门#', p.dept_id)) as deptName,
+            coalesce(sum(d.base_salary), 0) as baseSalary,
+            coalesce(sum(d.commission), 0) as commission,
+            coalesce(sum(d.bonus), 0) as bonus,
+            coalesce(sum(d.deduction), 0) as deduction,
+            coalesce(sum(d.net_pay), 0) as netPay
+        from ims_payroll_period p
+        inner join ims_payroll_detail d on d.period_id = p.period_id
+        left join ims_employee e on e.id = d.employee_id
+        left join sys_dept sd on sd.dept_id = p.dept_id
+        <where>
+            <if test="periodCode != null and periodCode != ''">and p.period_code = #{periodCode}</if>
+        </where>
+        group by d.employee_id, e.employee_name, sd.dept_name
+        order by netPay desc
+        limit #{limit}
+    </select>
+
+    <select id="selectPayrollAbnormalCheck" resultType="java.util.HashMap">
+        select
+            d.employee_id as employeeId,
+            coalesce(e.employee_name, concat('员工#', d.employee_id)) as employeeName,
+            coalesce(sd.dept_name, concat('部门#', p.dept_id)) as deptName,
+            d.attendance_days as attendanceDays,
+            d.base_salary as baseSalary,
+            d.deduction as deduction,
+            d.net_pay as netPay,
+            case
+                when d.attendance_days &lt; 20 then 'low_attendance'
+                when d.base_salary &gt; 0 and d.deduction / d.base_salary &gt;= 0.3 then 'high_deduction'
+                when d.net_pay &lt; 0 then 'negative_net_pay'
+                else 'watch'
+            end as abnormalType
+        from ims_payroll_period p
+        inner join ims_payroll_detail d on d.period_id = p.period_id
+        left join ims_employee e on e.id = d.employee_id
+        left join sys_dept sd on sd.dept_id = p.dept_id
+        <where>
+            <if test="periodCode != null and periodCode != ''">and p.period_code = #{periodCode}</if>
+            and (
+                d.attendance_days &lt; 20
+                or (d.base_salary &gt; 0 and d.deduction / d.base_salary &gt;= 0.3)
+                or d.net_pay &lt; 0
+            )
+        </where>
+        order by d.deduction desc, d.attendance_days asc
+        limit #{limit}
+    </select>
+
+    <select id="selectPayrollStatusSummary" resultType="java.util.HashMap">
+        select
+            p.status,
+            count(distinct p.period_id) as periodCount,
+            count(d.detail_id) as detailCount,
+            coalesce(sum(d.net_pay), 0) as netPay
+        from ims_payroll_period p
+        left join ims_payroll_detail d on d.period_id = p.period_id
+        <where>
+            <if test="periodCode != null and periodCode != ''">and p.period_code = #{periodCode}</if>
+        </where>
+        group by p.status
+        order by p.status asc
+    </select>
+
+    <select id="selectMasterDataHealthSummary" resultType="java.util.HashMap">
+        select
+            (select count(1) from ims_unit) as unitCount,
+            (select count(1) from ims_unit where status = '1') as disabledUnitCount,
+            (select count(1) from ims_warehouse) as warehouseCount,
+            (select count(1) from ims_warehouse where status = '1') as disabledWarehouseCount,
+            (select count(1) from ims_warehouse w left join ims_warehouse_location l on l.warehouse_id = w.id where l.id is null) as warehouseWithoutLocationCount,
+            (select count(1) from ims_warehouse_location) as locationCount,
+            (select count(1) from ims_warehouse_location where status = '1') as disabledLocationCount,
+            (select count(1) from ims_supplier) as supplierCount,
+            (select count(1) from ims_supplier where status = '1') as disabledSupplierCount,
+            (select count(1) from ims_supplier where phone is null or trim(phone) = '' or contact_person is null or trim(contact_person) = '') as supplierContactMissingCount,
+            (select count(1) from ims_product) as productCount,
+            (select count(1) from ims_product where status = '1') as disabledProductCount,
+            (select count(1) from ims_product where category_id is null or supplier_id is null or unit_id is null or brand_id is null or purchase_price is null or sale_price is null) as productKeyFieldMissingCount,
+            (select count(1) from ims_product_category) as categoryCount,
+            (select count(1) from ims_product_category where status = '1') as disabledCategoryCount,
+            (select count(1) from ims_brand) as brandCount,
+            (select count(1) from ims_brand where status = '1') as disabledBrandCount,
+            (select count(1) from ims_enterprise) as enterpriseCount,
+            (select count(1) from ims_enterprise where phone is null or trim(phone) = '' or tax_no is null or trim(tax_no) = '' or bank_name is null or trim(bank_name) = '' or bank_account is null or trim(bank_account) = '') as enterpriseKeyFieldMissingCount,
+            (select count(1) from ims_employee) as employeeCount,
+            (select count(1) from ims_employee where status = '1') as disabledEmployeeCount,
+            (select count(1) from ims_employee where phone is null or trim(phone) = '' or dept_id is null) as employeeKeyFieldMissingCount,
+            (select count(1) from ims_customer) as customerCount,
+            (select count(1) from ims_customer where status = '1') as disabledCustomerCount,
+            (select count(1) from ims_customer where phone is null or trim(phone) = '' or contact_person is null or trim(contact_person) = '') as customerContactMissingCount
+    </select>
+
+    <select id="selectUnitStatusSummary" resultType="java.util.HashMap">
+        select
+            count(1) as unitCount,
+            sum(case when status = '0' then 1 else 0 end) as enabledCount,
+            sum(case when status = '1' then 1 else 0 end) as disabledCount,
+            sum(case when unit_code is null or trim(unit_code) = '' then 1 else 0 end) as missingCodeCount,
+            sum(case when unit_name is null or trim(unit_name) = '' then 1 else 0 end) as missingNameCount
+        from ims_unit
+    </select>
+
+    <select id="selectUnitProductUsage" resultType="java.util.HashMap">
+        select
+            u.id as unitId,
+            u.unit_code as unitCode,
+            u.unit_name as unitName,
+            u.status,
+            count(p.id) as productCount
+        from ims_unit u
+        left join ims_product p on p.unit_id = u.id
+        group by u.id, u.unit_code, u.unit_name, u.status
+        order by productCount desc, u.id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectWarehouseLocationSummary" resultType="java.util.HashMap">
+        select
+            count(1) as warehouseCount,
+            coalesce(sum(locationCount), 0) as locationCount,
+            sum(case when warehouseStatus = '1' then 1 else 0 end) as disabledWarehouseCount,
+            coalesce(sum(disabledLocationCount), 0) as disabledLocationCount,
+            sum(case when locationCount = 0 then 1 else 0 end) as warehouseWithoutLocationCount,
+            coalesce(avg(locationCount), 0) as avgLocationPerWarehouse
+        from (
+            select
+                w.id,
+                w.status as warehouseStatus,
+                count(l.id) as locationCount,
+                sum(case when l.status = '1' then 1 else 0 end) as disabledLocationCount
+            from ims_warehouse w
+            left join ims_warehouse_location l on l.warehouse_id = w.id
+            <where>
+                <if test="enterpriseId != null">and w.enterprise_id = #{enterpriseId}</if>
+                <if test="warehouseId != null">and w.id = #{warehouseId}</if>
+            </where>
+            group by w.id, w.status
+        ) warehouse_stat
+    </select>
+
+    <select id="selectWarehouseLocationDetail" resultType="java.util.HashMap">
+        select
+            w.id as warehouseId,
+            w.warehouse_code as warehouseCode,
+            w.warehouse_name as warehouseName,
+            w.status as warehouseStatus,
+            count(l.id) as locationCount,
+            sum(case when l.status = '1' then 1 else 0 end) as disabledLocationCount,
+            case when count(l.id) = 0 then 'no_location' else 'ok' end as locationRisk
+        from ims_warehouse w
+        left join ims_warehouse_location l on l.warehouse_id = w.id
+        <where>
+            <if test="enterpriseId != null">and w.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and w.id = #{warehouseId}</if>
+        </where>
+        group by w.id, w.warehouse_code, w.warehouse_name, w.status
+        order by locationRisk desc, locationCount asc, w.id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectSupplierHealthSummary" resultType="java.util.HashMap">
+        select
+            count(1) as supplierCount,
+            sum(case when status = '0' then 1 else 0 end) as enabledCount,
+            sum(case when status = '1' then 1 else 0 end) as disabledCount,
+            sum(case when contact_person is null or trim(contact_person) = '' then 1 else 0 end) as missingContactCount,
+            sum(case when phone is null or trim(phone) = '' then 1 else 0 end) as missingPhoneCount,
+            sum(case when email is null or trim(email) = '' then 1 else 0 end) as missingEmailCount,
+            sum(case when address is null or trim(address) = '' then 1 else 0 end) as missingAddressCount
+        from ims_supplier
+    </select>
+
+    <select id="selectSupplierIncompleteList" resultType="java.util.HashMap">
+        select
+            id as supplierId,
+            supplier_code as supplierCode,
+            supplier_name as supplierName,
+            contact_person as contactPerson,
+            phone,
+            email,
+            address,
+            status,
+            concat(
+                case when contact_person is null or trim(contact_person) = '' then 'missing_contact;' else '' end,
+                case when phone is null or trim(phone) = '' then 'missing_phone;' else '' end,
+                case when email is null or trim(email) = '' then 'missing_email;' else '' end,
+                case when address is null or trim(address) = '' then 'missing_address;' else '' end,
+                case when status = '1' then 'disabled;' else '' end
+            ) as issueTypes
+        from ims_supplier
+        where contact_person is null or trim(contact_person) = ''
+            or phone is null or trim(phone) = ''
+            or email is null or trim(email) = ''
+            or address is null or trim(address) = ''
+            or status = '1'
+        order by status desc, id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectProductMasterSummary" resultType="java.util.HashMap">
+        select
+            count(1) as productCount,
+            sum(case when status = '0' then 1 else 0 end) as enabledCount,
+            sum(case when status = '1' then 1 else 0 end) as disabledCount,
+            sum(case when category_id is null then 1 else 0 end) as missingCategoryCount,
+            sum(case when supplier_id is null then 1 else 0 end) as missingSupplierCount,
+            sum(case when unit_id is null then 1 else 0 end) as missingUnitCount,
+            sum(case when brand_id is null then 1 else 0 end) as missingBrandCount,
+            sum(case when purchase_price is null then 1 else 0 end) as missingPurchasePriceCount,
+            sum(case when sale_price is null then 1 else 0 end) as missingSalePriceCount,
+            sum(case when spec is null or trim(spec) = '' then 1 else 0 end) as missingSpecCount,
+            coalesce(avg(purchase_price), 0) as avgPurchasePrice,
+            coalesce(avg(sale_price), 0) as avgSalePrice
+        from ims_product
+    </select>
+
+    <select id="selectProductIncompleteList" resultType="java.util.HashMap">
+        select
+            p.id as productId,
+            p.product_code as productCode,
+            p.product_name as productName,
+            p.status,
+            c.category_name as categoryName,
+            s.supplier_name as supplierName,
+            u.unit_name as unitName,
+            b.brand_name as brandName,
+            p.purchase_price as purchasePrice,
+            p.sale_price as salePrice,
+            concat(
+                case when p.category_id is null then 'missing_category;' else '' end,
+                case when p.supplier_id is null then 'missing_supplier;' else '' end,
+                case when p.unit_id is null then 'missing_unit;' else '' end,
+                case when p.brand_id is null then 'missing_brand;' else '' end,
+                case when p.purchase_price is null then 'missing_purchase_price;' else '' end,
+                case when p.sale_price is null then 'missing_sale_price;' else '' end,
+                case when p.spec is null or trim(p.spec) = '' then 'missing_spec;' else '' end,
+                case when p.status = '1' then 'disabled;' else '' end
+            ) as issueTypes
+        from ims_product p
+        left join ims_product_category c on c.id = p.category_id
+        left join ims_supplier s on s.id = p.supplier_id
+        left join ims_unit u on u.id = p.unit_id
+        left join ims_brand b on b.id = p.brand_id
+        where p.category_id is null
+            or p.supplier_id is null
+            or p.unit_id is null
+            or p.brand_id is null
+            or p.purchase_price is null
+            or p.sale_price is null
+            or p.spec is null or trim(p.spec) = ''
+            or p.status = '1'
+        order by p.status desc, p.id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectProductCategoryUsage" resultType="java.util.HashMap">
+        select
+            c.id as categoryId,
+            c.category_code as categoryCode,
+            c.category_name as categoryName,
+            c.parent_id as parentId,
+            c.status,
+            count(p.id) as productCount
+        from ims_product_category c
+        left join ims_product p on p.category_id = c.id
+        group by c.id, c.category_code, c.category_name, c.parent_id, c.status
+        order by productCount desc, c.id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectCategoryBrandSummary" resultType="java.util.HashMap">
+        select
+            (select count(1) from ims_product_category) as categoryCount,
+            (select count(1) from ims_product_category where parent_id is null or parent_id = 0) as rootCategoryCount,
+            (select count(1) from ims_product_category where status = '1') as disabledCategoryCount,
+            (select count(1) from ims_product_category c left join ims_product p on p.category_id = c.id where p.id is null) as categoryWithoutProductCount,
+            (select count(1) from ims_brand) as brandCount,
+            (select count(1) from ims_brand where status = '1') as disabledBrandCount,
+            (select count(1) from ims_brand b left join ims_product p on p.brand_id = b.id where p.id is null) as brandWithoutProductCount
+    </select>
+
+    <select id="selectCategoryUsageList" resultType="java.util.HashMap">
+        select
+            c.id as categoryId,
+            c.category_code as categoryCode,
+            c.category_name as categoryName,
+            c.parent_id as parentId,
+            c.status,
+            count(p.id) as productCount,
+            case when count(p.id) = 0 then 'no_product' when c.status = '1' then 'disabled' else 'ok' end as issueType
+        from ims_product_category c
+        left join ims_product p on p.category_id = c.id
+        group by c.id, c.category_code, c.category_name, c.parent_id, c.status
+        order by issueType desc, productCount asc, c.id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectBrandUsageList" resultType="java.util.HashMap">
+        select
+            b.id as brandId,
+            b.brand_code as brandCode,
+            b.brand_name as brandName,
+            b.status,
+            count(p.id) as productCount,
+            case when count(p.id) = 0 then 'no_product' when b.status = '1' then 'disabled' else 'ok' end as issueType
+        from ims_brand b
+        left join ims_product p on p.brand_id = b.id
+        group by b.id, b.brand_code, b.brand_name, b.status
+        order by issueType desc, productCount asc, b.id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectEnterpriseHealthSummary" resultType="java.util.HashMap">
+        select
+            count(1) as enterpriseCount,
+            sum(case when status = '0' then 1 else 0 end) as enabledCount,
+            sum(case when status = '1' then 1 else 0 end) as disabledCount,
+            sum(case when legal_person is null or trim(legal_person) = '' then 1 else 0 end) as missingLegalPersonCount,
+            sum(case when phone is null or trim(phone) = '' then 1 else 0 end) as missingPhoneCount,
+            sum(case when tax_no is null or trim(tax_no) = '' then 1 else 0 end) as missingTaxNoCount,
+            sum(case when bank_name is null or trim(bank_name) = '' or bank_account is null or trim(bank_account) = '' then 1 else 0 end) as missingBankInfoCount,
+            sum(case when address is null or trim(address) = '' then 1 else 0 end) as missingAddressCount
+        from ims_enterprise
+    </select>
+
+    <select id="selectEnterpriseIncompleteList" resultType="java.util.HashMap">
+        select
+            id as enterpriseId,
+            enterprise_code as enterpriseCode,
+            enterprise_name as enterpriseName,
+            legal_person as legalPerson,
+            phone,
+            tax_no as taxNo,
+            bank_name as bankName,
+            bank_account as bankAccount,
+            address,
+            status,
+            concat(
+                case when legal_person is null or trim(legal_person) = '' then 'missing_legal_person;' else '' end,
+                case when phone is null or trim(phone) = '' then 'missing_phone;' else '' end,
+                case when tax_no is null or trim(tax_no) = '' then 'missing_tax_no;' else '' end,
+                case when bank_name is null or trim(bank_name) = '' or bank_account is null or trim(bank_account) = '' then 'missing_bank_info;' else '' end,
+                case when address is null or trim(address) = '' then 'missing_address;' else '' end,
+                case when status = '1' then 'disabled;' else '' end
+            ) as issueTypes
+        from ims_enterprise
+        where legal_person is null or trim(legal_person) = ''
+            or phone is null or trim(phone) = ''
+            or tax_no is null or trim(tax_no) = ''
+            or bank_name is null or trim(bank_name) = ''
+            or bank_account is null or trim(bank_account) = ''
+            or address is null or trim(address) = ''
+            or status = '1'
+        order by status desc, id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectEmployeeHealthSummary" resultType="java.util.HashMap">
+        select
+            count(1) as employeeCount,
+            sum(case when e.status = '0' then 1 else 0 end) as enabledCount,
+            sum(case when e.status = '1' then 1 else 0 end) as disabledCount,
+            sum(case when e.phone is null or trim(e.phone) = '' then 1 else 0 end) as missingPhoneCount,
+            sum(case when e.dept_id is null then 1 else 0 end) as missingDeptCount,
+            sum(case when e.dept_id is not null and d.dept_id is null then 1 else 0 end) as invalidDeptCount
+        from ims_employee e
+        left join sys_dept d on d.dept_id = e.dept_id
+    </select>
+
+    <select id="selectEmployeeDeptSummary" resultType="java.util.HashMap">
+        select
+            e.dept_id as deptId,
+            coalesce(d.dept_name, concat('dept#', e.dept_id)) as deptName,
+            count(1) as employeeCount,
+            sum(case when e.status = '0' then 1 else 0 end) as enabledCount,
+            sum(case when e.status = '1' then 1 else 0 end) as disabledCount,
+            sum(case when e.phone is null or trim(e.phone) = '' then 1 else 0 end) as missingPhoneCount
+        from ims_employee e
+        left join sys_dept d on d.dept_id = e.dept_id
+        group by e.dept_id, d.dept_name
+        order by employeeCount desc, e.dept_id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectEmployeeIncompleteList" resultType="java.util.HashMap">
+        select
+            e.id as employeeId,
+            e.employee_code as employeeCode,
+            e.employee_name as employeeName,
+            e.dept_id as deptId,
+            d.dept_name as deptName,
+            e.phone,
+            e.status,
+            concat(
+                case when e.phone is null or trim(e.phone) = '' then 'missing_phone;' else '' end,
+                case when e.dept_id is null then 'missing_dept;' else '' end,
+                case when e.dept_id is not null and d.dept_id is null then 'invalid_dept;' else '' end,
+                case when e.status = '1' then 'disabled;' else '' end
+            ) as issueTypes
+        from ims_employee e
+        left join sys_dept d on d.dept_id = e.dept_id
+        where e.phone is null or trim(e.phone) = ''
+            or e.dept_id is null
+            or (e.dept_id is not null and d.dept_id is null)
+            or e.status = '1'
+        order by e.status desc, e.id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectCustomerHealthSummary" resultType="java.util.HashMap">
+        select
+            count(1) as customerCount,
+            sum(case when status = '0' then 1 else 0 end) as enabledCount,
+            sum(case when status = '1' then 1 else 0 end) as disabledCount,
+            sum(case when contact_person is null or trim(contact_person) = '' then 1 else 0 end) as missingContactCount,
+            sum(case when phone is null or trim(phone) = '' then 1 else 0 end) as missingPhoneCount,
+            sum(case when email is null or trim(email) = '' then 1 else 0 end) as missingEmailCount,
+            sum(case when address is null or trim(address) = '' then 1 else 0 end) as missingAddressCount
+        from ims_customer
+    </select>
+
+    <select id="selectCustomerIncompleteList" resultType="java.util.HashMap">
+        select
+            id as customerId,
+            customer_code as customerCode,
+            customer_name as customerName,
+            contact_person as contactPerson,
+            phone,
+            email,
+            address,
+            status,
+            concat(
+                case when contact_person is null or trim(contact_person) = '' then 'missing_contact;' else '' end,
+                case when phone is null or trim(phone) = '' then 'missing_phone;' else '' end,
+                case when email is null or trim(email) = '' then 'missing_email;' else '' end,
+                case when address is null or trim(address) = '' then 'missing_address;' else '' end,
+                case when status = '1' then 'disabled;' else '' end
+            ) as issueTypes
+        from ims_customer
+        where contact_person is null or trim(contact_person) = ''
+            or phone is null or trim(phone) = ''
+            or email is null or trim(email) = ''
+            or address is null or trim(address) = ''
+            or status = '1'
+        order by status desc, id asc
+        limit #{limit}
+    </select>
+
+    <select id="selectInboundMonthlySummary" resultType="java.util.HashMap">
+        select
+            count(1) as billCount,
+            coalesce(sum(total_qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(total_amount), 0) as totalAmount,
+            coalesce(avg(total_amount), 0) as avgBillAmount,
+            sum(case when bill_status = '0' then 1 else 0 end) as draftCount,
+            sum(case when bill_status = '1' then 1 else 0 end) as auditedCount,
+            sum(case when bill_status = '2' then 1 else 0 end) as voidCount
+        from ims_inbound
+        <where>
+            <if test="beginDate != null and beginDate != ''">and bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and warehouse_id = #{warehouseId}</if>
+        </where>
+    </select>
+
+    <select id="selectInboundSupplierRanking" resultType="java.util.HashMap">
+        select
+            i.supplier_id as supplierId,
+            coalesce(s.supplier_name, concat('supplier#', i.supplier_id)) as supplierName,
+            count(1) as billCount,
+            coalesce(sum(i.total_qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(i.total_amount), 0) as totalAmount
+        from ims_inbound i
+        left join ims_supplier s on s.id = i.supplier_id
+        <where>
+            <if test="beginDate != null and beginDate != ''">and i.bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and i.bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and i.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and i.warehouse_id = #{warehouseId}</if>
+        </where>
+        group by i.supplier_id, s.supplier_name
+        order by totalAmount desc, totalQtyPiece desc
+        limit #{limit}
+    </select>
+
+    <select id="selectInboundProductRanking" resultType="java.util.HashMap">
+        select
+            ii.product_id as productId,
+            coalesce(p.product_name, concat('product#', ii.product_id)) as productName,
+            count(distinct i.id) as billCount,
+            count(1) as lineCount,
+            coalesce(sum(ii.qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(ii.amount), 0) as totalAmount
+        from ims_inbound_item ii
+        inner join ims_inbound i on i.id = ii.inbound_id
+        left join ims_product p on p.id = ii.product_id
+        <where>
+            <if test="beginDate != null and beginDate != ''">and i.bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and i.bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and i.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and i.warehouse_id = #{warehouseId}</if>
+        </where>
+        group by ii.product_id, p.product_name
+        order by totalAmount desc, totalQtyPiece desc
+        limit #{limit}
+    </select>
+
+    <select id="selectDeliveryMonthlySummary" resultType="java.util.HashMap">
+        select
+            count(1) as billCount,
+            coalesce(sum(total_qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(total_amount), 0) as totalAmount,
+            coalesce(avg(total_amount), 0) as avgBillAmount,
+            sum(case when bill_status = '0' then 1 else 0 end) as draftCount,
+            sum(case when bill_status = '1' then 1 else 0 end) as auditedCount,
+            sum(case when bill_status = '2' then 1 else 0 end) as voidCount
+        from ims_delivery
+        <where>
+            <if test="beginDate != null and beginDate != ''">and bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and warehouse_id = #{warehouseId}</if>
+        </where>
+    </select>
+
+    <select id="selectDeliveryCustomerRanking" resultType="java.util.HashMap">
+        select
+            d.customer_id as customerId,
+            coalesce(c.customer_name, concat('customer#', d.customer_id)) as customerName,
+            count(1) as billCount,
+            coalesce(sum(d.total_qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(d.total_amount), 0) as totalAmount
+        from ims_delivery d
+        left join ims_customer c on c.id = d.customer_id
+        <where>
+            <if test="beginDate != null and beginDate != ''">and d.bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and d.bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and d.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and d.warehouse_id = #{warehouseId}</if>
+        </where>
+        group by d.customer_id, c.customer_name
+        order by totalAmount desc, totalQtyPiece desc
+        limit #{limit}
+    </select>
+
+    <select id="selectDeliveryProductRanking" resultType="java.util.HashMap">
+        select
+            di.product_id as productId,
+            coalesce(p.product_name, concat('product#', di.product_id)) as productName,
+            count(distinct d.id) as billCount,
+            count(1) as lineCount,
+            coalesce(sum(di.qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(di.amount), 0) as totalAmount
+        from ims_delivery_item di
+        inner join ims_delivery d on d.id = di.delivery_id
+        left join ims_product p on p.id = di.product_id
+        <where>
+            <if test="beginDate != null and beginDate != ''">and d.bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and d.bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and d.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and d.warehouse_id = #{warehouseId}</if>
+        </where>
+        group by di.product_id, p.product_name
+        order by totalAmount desc, totalQtyPiece desc
+        limit #{limit}
+    </select>
+
+    <select id="selectOutboundMonthlySummary" resultType="java.util.HashMap">
+        select
+            count(1) as billCount,
+            coalesce(sum(total_qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(total_amount), 0) as totalAmount,
+            coalesce(avg(total_amount), 0) as avgBillAmount,
+            sum(case when bill_status = '0' then 1 else 0 end) as draftCount,
+            sum(case when bill_status = '1' then 1 else 0 end) as auditedCount,
+            sum(case when bill_status = '2' then 1 else 0 end) as voidCount
+        from ims_outbound
+        <where>
+            <if test="beginDate != null and beginDate != ''">and bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and warehouse_id = #{warehouseId}</if>
+        </where>
+    </select>
+
+    <select id="selectOutboundTypeSummary" resultType="java.util.HashMap">
+        select
+            out_type as outType,
+            count(1) as billCount,
+            coalesce(sum(total_qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(total_amount), 0) as totalAmount
+        from ims_outbound
+        <where>
+            <if test="beginDate != null and beginDate != ''">and bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and warehouse_id = #{warehouseId}</if>
+        </where>
+        group by out_type
+        order by totalAmount desc, totalQtyPiece desc
+    </select>
+
+    <select id="selectOutboundProductRanking" resultType="java.util.HashMap">
+        select
+            oi.product_id as productId,
+            coalesce(p.product_name, concat('product#', oi.product_id)) as productName,
+            count(distinct o.id) as billCount,
+            count(1) as lineCount,
+            coalesce(sum(oi.qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(oi.amount), 0) as totalAmount
+        from ims_outbound_item oi
+        inner join ims_outbound o on o.id = oi.outbound_id
+        left join ims_product p on p.id = oi.product_id
+        <where>
+            <if test="beginDate != null and beginDate != ''">and o.bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and o.bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and o.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and o.warehouse_id = #{warehouseId}</if>
+        </where>
+        group by oi.product_id, p.product_name
+        order by totalAmount desc, totalQtyPiece desc
+        limit #{limit}
+    </select>
+
+    <select id="selectSaleReturnMonthlySummary" resultType="java.util.HashMap">
+        select
+            count(1) as billCount,
+            coalesce(sum(total_qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(total_amount), 0) as totalAmount,
+            coalesce(avg(total_amount), 0) as avgBillAmount,
+            sum(case when bill_status = '0' then 1 else 0 end) as draftCount,
+            sum(case when bill_status = '1' then 1 else 0 end) as auditedCount,
+            sum(case when bill_status = '2' then 1 else 0 end) as voidCount
+        from ims_sale_return
+        <where>
+            <if test="beginDate != null and beginDate != ''">and bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and warehouse_id = #{warehouseId}</if>
+        </where>
+    </select>
+
+    <select id="selectSaleReturnReasonSummary" resultType="java.util.HashMap">
+        select
+            coalesce(nullif(trim(reason), ''), 'empty_reason') as reason,
+            count(1) as billCount,
+            coalesce(sum(total_qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(total_amount), 0) as totalAmount
+        from ims_sale_return
+        <where>
+            <if test="beginDate != null and beginDate != ''">and bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and warehouse_id = #{warehouseId}</if>
+        </where>
+        group by coalesce(nullif(trim(reason), ''), 'empty_reason')
+        order by totalAmount desc, totalQtyPiece desc
+        limit 20
+    </select>
+
+    <select id="selectSaleReturnProductRanking" resultType="java.util.HashMap">
+        select
+            ri.product_id as productId,
+            coalesce(p.product_name, concat('product#', ri.product_id)) as productName,
+            count(distinct r.id) as billCount,
+            count(1) as lineCount,
+            coalesce(sum(ri.qty_piece), 0) as totalQtyPiece,
+            coalesce(sum(ri.amount), 0) as totalAmount
+        from ims_sale_return_item ri
+        inner join ims_sale_return r on r.id = ri.sale_return_id
+        left join ims_product p on p.id = ri.product_id
+        <where>
+            <if test="beginDate != null and beginDate != ''">and r.bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and r.bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and r.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and r.warehouse_id = #{warehouseId}</if>
+        </where>
+        group by ri.product_id, p.product_name
+        order by totalAmount desc, totalQtyPiece desc
+        limit #{limit}
+    </select>
+
+    <select id="selectSampleMonthlySummary" resultType="java.util.HashMap">
+        select
+            count(1) as billCount,
+            coalesce(sum(total_qty_piece), 0) as totalQtyPiece,
+            sum(case when bill_status = '0' then 1 else 0 end) as draftCount,
+            sum(case when bill_status = '1' then 1 else 0 end) as auditedCount,
+            sum(case when bill_status = '2' then 1 else 0 end) as voidCount,
+            count(distinct customer_id) as customerCount
+        from ims_sample
+        <where>
+            <if test="beginDate != null and beginDate != ''">and bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and warehouse_id = #{warehouseId}</if>
+        </where>
+    </select>
+
+    <select id="selectSamplePurposeSummary" resultType="java.util.HashMap">
+        select
+            coalesce(nullif(trim(purpose), ''), 'empty_purpose') as purpose,
+            count(1) as billCount,
+            coalesce(sum(total_qty_piece), 0) as totalQtyPiece,
+            count(distinct customer_id) as customerCount
+        from ims_sample
+        <where>
+            <if test="beginDate != null and beginDate != ''">and bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and warehouse_id = #{warehouseId}</if>
+        </where>
+        group by coalesce(nullif(trim(purpose), ''), 'empty_purpose')
+        order by totalQtyPiece desc, billCount desc
+        limit 20
+    </select>
+
+    <select id="selectSampleProductRanking" resultType="java.util.HashMap">
+        select
+            si.product_id as productId,
+            coalesce(p.product_name, concat('product#', si.product_id)) as productName,
+            count(distinct s.id) as billCount,
+            count(1) as lineCount,
+            coalesce(sum(si.qty_piece), 0) as totalQtyPiece
+        from ims_sample_item si
+        inner join ims_sample s on s.id = si.sample_id
+        left join ims_product p on p.id = si.product_id
+        <where>
+            <if test="beginDate != null and beginDate != ''">and s.bill_date &gt;= #{beginDate}</if>
+            <if test="endDate != null and endDate != ''">and s.bill_date &lt;= #{endDate}</if>
+            <if test="enterpriseId != null">and s.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null">and s.warehouse_id = #{warehouseId}</if>
+        </where>
+        group by si.product_id, p.product_name
+        order by totalQtyPiece desc, billCount desc
+        limit #{limit}
+    </select>
+</mapper>

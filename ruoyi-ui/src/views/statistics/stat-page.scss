@@ -1,0 +1,132 @@
+.stat-page {
+  background: #f5f7fb;
+  min-height: calc(100vh - 84px);
+}
+
+.stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  h2 {
+    color: #1f2d3d;
+    font-size: 24px;
+    line-height: 32px;
+    margin: 0;
+  }
+
+  p {
+    color: #8b97a8;
+    font-size: 13px;
+    line-height: 22px;
+    margin: 4px 0 0;
+  }
+}
+
+.filter-bar {
+  background: #fff;
+  border: 1px solid #eef1f5;
+  border-radius: 6px;
+  padding: 16px 16px 0;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(18, 38, 63, 0.04);
+}
+
+.metric-row {
+  margin-bottom: 16px;
+}
+
+.metric-card {
+  display: flex;
+  align-items: center;
+  min-height: 104px;
+  background: #fff;
+  border: 1px solid #eef1f5;
+  border-radius: 6px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(18, 38, 63, 0.04);
+}
+
+.metric-card__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 14px;
+  font-size: 23px;
+
+  &.blue {
+    color: #2563eb;
+    background: #eaf1ff;
+  }
+
+  &.green {
+    color: #14b8a6;
+    background: #e6fffb;
+  }
+
+  &.orange {
+    color: #f97316;
+    background: #fff3e8;
+  }
+
+  &.purple {
+    color: #7c3aed;
+    background: #f1ecff;
+  }
+}
+
+.metric-card__value {
+  color: #1f2d3d;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 30px;
+  word-break: break-all;
+}
+
+.metric-card__label {
+  color: #8b97a8;
+  font-size: 13px;
+  line-height: 20px;
+  margin-top: 4px;
+}
+
+.section-row {
+  margin-top: 16px;
+}
+
+.data-panel {
+  background: #fff;
+  border: 1px solid #eef1f5;
+  border-radius: 6px;
+  padding: 18px;
+  min-height: 330px;
+  box-shadow: 0 8px 24px rgba(18, 38, 63, 0.04);
+}
+
+.data-panel__title {
+  color: #1f2d3d;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 768px) {
+  .stat-header {
+    align-items: flex-start;
+    flex-direction: column;
+
+    .el-button {
+      margin-top: 12px;
+    }
+  }
+
+  .metric-card__value {
+    font-size: 20px;
+  }
+}

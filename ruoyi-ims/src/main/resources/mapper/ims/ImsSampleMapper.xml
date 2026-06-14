@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.ims.mapper.ImsSampleMapper">
+    
+    <resultMap type="ImsSample" id="ImsSampleResult">
+        <result property="id"    column="id"    />
+        <result property="billNo"    column="bill_no"    />
+        <result property="enterpriseId"    column="enterprise_id"    />
+        <result property="enterpriseName"    column="enterprise_name"    />
+        <result property="warehouseId"    column="warehouse_id"    />
+        <result property="warehouseName"    column="warehouse_name"    />
+        <result property="customerId"    column="customer_id"    />
+        <result property="customerName"    column="customer_name"    />
+        <result property="billDate"    column="bill_date"    />
+        <result property="receiver"    column="receiver"    />
+        <result property="purpose"    column="purpose"    />
+        <result property="totalQtyPiece"    column="total_qty_piece"    />
+        <result property="billStatus"    column="bill_status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <resultMap id="ImsSampleImsSampleItemResult" type="ImsSample" extends="ImsSampleResult">
+        <collection property="imsSampleItemList" ofType="ImsSampleItem" column="id" select="selectImsSampleItemList" />
+    </resultMap>
+
+    <resultMap type="ImsSampleItem" id="ImsSampleItemResult">
+        <result property="id"    column="id"    />
+        <result property="sampleId"    column="sample_id"    />
+        <result property="lineNo"    column="line_no"    />
+        <result property="productId"    column="product_id"    />
+        <result property="qtyPiece"    column="qty_piece"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectImsSampleVo">
+        select s.id, s.bill_no, s.enterprise_id, e.enterprise_name, s.warehouse_id, w.warehouse_name,
+               s.customer_id, c.customer_name, s.bill_date, s.receiver, s.purpose,
+               s.total_qty_piece, s.bill_status, s.create_by, s.create_time,
+               s.update_by, s.update_time, s.remark
+        from ims_sample s
+        left join ims_enterprise e on s.enterprise_id = e.id
+        left join ims_warehouse w on s.warehouse_id = w.id
+        left join ims_customer c on s.customer_id = c.id
+    </sql>
+
+    <select id="selectImsSampleList" parameterType="ImsSample" resultMap="ImsSampleResult">
+        <include refid="selectImsSampleVo"/>
+        <where>  
+            <if test="billNo != null  and billNo != ''"> and s.bill_no = #{billNo}</if>
+            <if test="enterpriseId != null "> and s.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null "> and s.warehouse_id = #{warehouseId}</if>
+            <if test="customerId != null "> and s.customer_id = #{customerId}</if>
+            <if test="billDate != null and params.beginBillDate == null and params.endBillDate == null"> and s.bill_date = #{billDate}</if>
+            <if test="params.beginBillDate != null and params.beginBillDate != ''"> and date_format(s.bill_date,'%Y%m%d') &gt;= date_format(#{params.beginBillDate},'%Y%m%d')</if>
+            <if test="params.endBillDate != null and params.endBillDate != ''"> and date_format(s.bill_date,'%Y%m%d') &lt;= date_format(#{params.endBillDate},'%Y%m%d')</if>
+            <if test="receiver != null  and receiver != ''"> and s.receiver = #{receiver}</if>
+            <if test="purpose != null  and purpose != ''"> and s.purpose = #{purpose}</if>
+            <if test="billStatus != null  and billStatus != ''"> and s.bill_status = #{billStatus}</if>
+        </where>
+        order by s.bill_date desc, s.create_time desc, s.id desc
+    </select>
+    
+    <select id="selectImsSampleById" parameterType="Long" resultMap="ImsSampleImsSampleItemResult">
+        select id, bill_no, enterprise_id, warehouse_id, customer_id, bill_date, receiver, purpose, total_qty_piece, bill_status, create_by, create_time, update_by, update_time, remark
+        from ims_sample
+        where id = #{id}
+    </select>
+
+    <select id="selectImsSampleItemList" resultMap="ImsSampleItemResult">
+        select id, sample_id, line_no, product_id, qty_piece, remark
+        from ims_sample_item
+        where sample_id = #{sample_id}
+    </select>
+
+    <insert id="insertImsSample" parameterType="ImsSample" useGeneratedKeys="true" keyProperty="id">
+        insert into ims_sample
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="billNo != null and billNo != ''">bill_no,</if>
+            <if test="enterpriseId != null">enterprise_id,</if>
+            <if test="warehouseId != null">warehouse_id,</if>
+            <if test="customerId != null">customer_id,</if>
+            <if test="billDate != null">bill_date,</if>
+            <if test="receiver != null">receiver,</if>
+            <if test="purpose != null">purpose,</if>
+            <if test="totalQtyPiece != null">total_qty_piece,</if>
+            <if test="billStatus != null and billStatus != ''">bill_status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="billNo != null and billNo != ''">#{billNo},</if>
+            <if test="enterpriseId != null">#{enterpriseId},</if>
+            <if test="warehouseId != null">#{warehouseId},</if>
+            <if test="customerId != null">#{customerId},</if>
+            <if test="billDate != null">#{billDate},</if>
+            <if test="receiver != null">#{receiver},</if>
+            <if test="purpose != null">#{purpose},</if>
+            <if test="totalQtyPiece != null">#{totalQtyPiece},</if>
+            <if test="billStatus != null and billStatus != ''">#{billStatus},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateImsSample" parameterType="ImsSample">
+        update ims_sample
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="billNo != null and billNo != ''">bill_no = #{billNo},</if>
+            <if test="enterpriseId != null">enterprise_id = #{enterpriseId},</if>
+            <if test="warehouseId != null">warehouse_id = #{warehouseId},</if>
+            <if test="customerId != null">customer_id = #{customerId},</if>
+            <if test="billDate != null">bill_date = #{billDate},</if>
+            <if test="receiver != null">receiver = #{receiver},</if>
+            <if test="purpose != null">purpose = #{purpose},</if>
+            <if test="totalQtyPiece != null">total_qty_piece = #{totalQtyPiece},</if>
+            <if test="billStatus != null and billStatus != ''">bill_status = #{billStatus},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteImsSampleById" parameterType="Long">
+        delete from ims_sample where id = #{id}
+    </delete>
+
+    <delete id="deleteImsSampleByIds" parameterType="String">
+        delete from ims_sample where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    
+    <delete id="deleteImsSampleItemBySampleIds" parameterType="String">
+        delete from ims_sample_item where sample_id in 
+        <foreach item="sampleId" collection="array" open="(" separator="," close=")">
+            #{sampleId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteImsSampleItemBySampleId" parameterType="Long">
+        delete from ims_sample_item where sample_id = #{sampleId}
+    </delete>
+
+    <insert id="batchImsSampleItem">
+        insert into ims_sample_item( id, sample_id, line_no, product_id, qty_piece, remark) values
+        <foreach item="item" index="index" collection="list" separator=",">
+            ( #{item.id}, #{item.sampleId}, #{item.lineNo}, #{item.productId}, #{item.qtyPiece}, #{item.remark})
+        </foreach>
+    </insert>
+</mapper>

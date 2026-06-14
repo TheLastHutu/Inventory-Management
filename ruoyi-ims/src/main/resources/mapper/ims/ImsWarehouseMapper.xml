@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.ims.mapper.ImsWarehouseMapper">
+    
+    <resultMap type="ImsWarehouse" id="ImsWarehouseResult">
+        <result property="id"    column="id"    />
+        <result property="enterpriseId"    column="enterprise_id"    />
+        <result property="enterpriseName"    column="enterprise_name"    />
+        <result property="warehouseCode"    column="warehouse_code"    />
+        <result property="warehouseName"    column="warehouse_name"    />
+        <result property="address"    column="address"    />
+        <result property="managerId"    column="manager_id"    />
+        <result property="managerName"    column="manager_name"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectImsWarehouseVo">
+        select w.id, w.enterprise_id, e.enterprise_name, w.warehouse_code, w.warehouse_name,
+               w.address, w.manager_id, emp.employee_name as manager_name, w.status,
+               w.create_by, w.create_time, w.update_by, w.update_time, w.remark
+        from ims_warehouse w
+        left join ims_enterprise e on w.enterprise_id = e.id
+        left join ims_employee emp on w.manager_id = emp.id
+    </sql>
+
+    <select id="selectImsWarehouseList" parameterType="ImsWarehouse" resultMap="ImsWarehouseResult">
+        <include refid="selectImsWarehouseVo"/>
+        <where>  
+            <if test="enterpriseId != null "> and w.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseCode != null  and warehouseCode != ''"> and w.warehouse_code = #{warehouseCode}</if>
+            <if test="warehouseName != null  and warehouseName != ''"> and w.warehouse_name like concat('%', #{warehouseName}, '%')</if>
+            <if test="managerId != null "> and w.manager_id = #{managerId}</if>
+            <if test="status != null  and status != ''"> and w.status = #{status}</if>
+        </where>
+        order by w.create_time desc, w.id desc
+    </select>
+    
+    <select id="selectImsWarehouseById" parameterType="Long" resultMap="ImsWarehouseResult">
+        <include refid="selectImsWarehouseVo"/>
+        where w.id = #{id}
+    </select>
+
+    <insert id="insertImsWarehouse" parameterType="ImsWarehouse" useGeneratedKeys="true" keyProperty="id">
+        insert into ims_warehouse
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="enterpriseId != null">enterprise_id,</if>
+            <if test="warehouseCode != null and warehouseCode != ''">warehouse_code,</if>
+            <if test="warehouseName != null and warehouseName != ''">warehouse_name,</if>
+            <if test="address != null">address,</if>
+            <if test="managerId != null">manager_id,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="enterpriseId != null">#{enterpriseId},</if>
+            <if test="warehouseCode != null and warehouseCode != ''">#{warehouseCode},</if>
+            <if test="warehouseName != null and warehouseName != ''">#{warehouseName},</if>
+            <if test="address != null">#{address},</if>
+            <if test="managerId != null">#{managerId},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateImsWarehouse" parameterType="ImsWarehouse">
+        update ims_warehouse
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="enterpriseId != null">enterprise_id = #{enterpriseId},</if>
+            <if test="warehouseCode != null and warehouseCode != ''">warehouse_code = #{warehouseCode},</if>
+            <if test="warehouseName != null and warehouseName != ''">warehouse_name = #{warehouseName},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="managerId != null">manager_id = #{managerId},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteImsWarehouseById" parameterType="Long">
+        delete from ims_warehouse where id = #{id}
+    </delete>
+
+    <delete id="deleteImsWarehouseByIds" parameterType="String">
+        delete from ims_warehouse where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

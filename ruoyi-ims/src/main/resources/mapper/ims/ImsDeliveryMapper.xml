@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.ims.mapper.ImsDeliveryMapper">
+    
+    <resultMap type="ImsDelivery" id="ImsDeliveryResult">
+        <result property="id"    column="id"    />
+        <result property="billNo"    column="bill_no"    />
+        <result property="enterpriseId"    column="enterprise_id"    />
+        <result property="enterpriseName"    column="enterprise_name"    />
+        <result property="warehouseId"    column="warehouse_id"    />
+        <result property="warehouseName"    column="warehouse_name"    />
+        <result property="handlerId"    column="handler_id"    />
+        <result property="handlerName"    column="handler_name"    />
+        <result property="customerId"    column="customer_id"    />
+        <result property="customerName"    column="customer_name"    />
+        <result property="billDate"    column="bill_date"    />
+        <result property="deliveryType"    column="delivery_type"    />
+        <result property="totalQtyPiece"    column="total_qty_piece"    />
+        <result property="totalAmount"    column="total_amount"    />
+        <result property="billStatus"    column="bill_status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <resultMap id="ImsDeliveryImsDeliveryItemResult" type="ImsDelivery" extends="ImsDeliveryResult">
+        <collection property="imsDeliveryItemList" ofType="ImsDeliveryItem" column="id" select="selectImsDeliveryItemList" />
+    </resultMap>
+
+    <resultMap type="ImsDeliveryItem" id="ImsDeliveryItemResult">
+        <result property="id"    column="id"    />
+        <result property="deliveryId"    column="delivery_id"    />
+        <result property="productId"    column="product_id"    />
+        <result property="qtyPiece"    column="qty_piece"    />
+        <result property="unitPrice"    column="unit_price"    />
+        <result property="amount"    column="amount"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectImsDeliveryVo">
+        select d.id, d.bill_no, d.enterprise_id, e.enterprise_name, d.warehouse_id, w.warehouse_name,
+               d.handler_id, emp.employee_name as handler_name, d.customer_id, c.customer_name,
+               d.bill_date, d.delivery_type, d.total_qty_piece, d.total_amount, d.bill_status,
+               d.create_by, d.create_time, d.update_by, d.update_time, d.remark
+        from ims_delivery d
+        left join ims_enterprise e on d.enterprise_id = e.id
+        left join ims_warehouse w on d.warehouse_id = w.id
+        left join ims_employee emp on d.handler_id = emp.id
+        left join ims_customer c on d.customer_id = c.id
+    </sql>
+
+    <select id="selectImsDeliveryList" parameterType="ImsDelivery" resultMap="ImsDeliveryResult">
+        <include refid="selectImsDeliveryVo"/>
+        <where>
+            <if test="billNo != null  and billNo != ''"> and d.bill_no = #{billNo}</if>
+            <if test="enterpriseId != null "> and d.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null "> and d.warehouse_id = #{warehouseId}</if>
+            <if test="handlerId != null "> and d.handler_id = #{handlerId}</if>
+            <if test="customerId != null "> and d.customer_id = #{customerId}</if>
+            <if test="beginTime != null "> and d.bill_date &gt;= #{beginTime}</if> <!-- 转义 >= -->
+            <if test="endTime != null "> and d.bill_date &lt;= #{endTime}</if>   <!-- 转义 <= -->
+            <if test="deliveryType != null  and deliveryType != ''"> and d.delivery_type = #{deliveryType}</if>
+            <if test="billStatus != null  and billStatus != ''"> and d.bill_status = #{billStatus}</if>
+        </where>
+        order by d.bill_date desc, d.create_time desc, d.id desc
+    </select>
+    
+    <select id="selectImsDeliveryById" parameterType="Long" resultMap="ImsDeliveryImsDeliveryItemResult">
+        select id, bill_no, enterprise_id, warehouse_id, handler_id, customer_id, bill_date, delivery_type, total_qty_piece, total_amount, bill_status, create_by, create_time, update_by, update_time, remark
+        from ims_delivery
+        where id = #{id}
+    </select>
+
+    <select id="selectImsDeliveryItemList" resultMap="ImsDeliveryItemResult">
+        select id, delivery_id, product_id, qty_piece, unit_price, amount, remark
+        from ims_delivery_item
+        where delivery_id = #{delivery_id}
+    </select>
+
+    <insert id="insertImsDelivery" parameterType="ImsDelivery" useGeneratedKeys="true" keyProperty="id">
+        insert into ims_delivery
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="billNo != null and billNo != ''">bill_no,</if>
+            <if test="enterpriseId != null">enterprise_id,</if>
+            <if test="warehouseId != null">warehouse_id,</if>
+            <if test="handlerId != null">handler_id,</if>
+            <if test="customerId != null">customer_id,</if>
+            <if test="billDate != null">bill_date,</if>
+            <if test="deliveryType != null and deliveryType != ''">delivery_type,</if>
+            <if test="totalQtyPiece != null">total_qty_piece,</if>
+            <if test="totalAmount != null">total_amount,</if>
+            <if test="billStatus != null and billStatus != ''">bill_status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="billNo != null and billNo != ''">#{billNo},</if>
+            <if test="enterpriseId != null">#{enterpriseId},</if>
+            <if test="warehouseId != null">#{warehouseId},</if>
+            <if test="handlerId != null">#{handlerId},</if>
+            <if test="customerId != null">#{customerId},</if>
+            <if test="billDate != null">#{billDate},</if>
+            <if test="deliveryType != null and deliveryType != ''">#{deliveryType},</if>
+            <if test="totalQtyPiece != null">#{totalQtyPiece},</if>
+            <if test="totalAmount != null">#{totalAmount},</if>
+            <if test="billStatus != null and billStatus != ''">#{billStatus},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateImsDelivery" parameterType="ImsDelivery">
+        update ims_delivery
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="billNo != null and billNo != ''">bill_no = #{billNo},</if>
+            <if test="enterpriseId != null">enterprise_id = #{enterpriseId},</if>
+            <if test="warehouseId != null">warehouse_id = #{warehouseId},</if>
+            <if test="handlerId != null">handler_id = #{handlerId},</if>
+            <if test="customerId != null">customer_id = #{customerId},</if>
+            <if test="billDate != null">bill_date = #{billDate},</if>
+            <if test="deliveryType != null and deliveryType != ''">delivery_type = #{deliveryType},</if>
+            <if test="totalQtyPiece != null">total_qty_piece = #{totalQtyPiece},</if>
+            <if test="totalAmount != null">total_amount = #{totalAmount},</if>
+            <if test="billStatus != null and billStatus != ''">bill_status = #{billStatus},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteImsDeliveryById" parameterType="Long">
+        delete from ims_delivery where id = #{id}
+    </delete>
+
+    <delete id="deleteImsDeliveryByIds" parameterType="String">
+        delete from ims_delivery where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    
+    <delete id="deleteImsDeliveryItemByDeliveryIds" parameterType="String">
+        delete from ims_delivery_item where delivery_id in 
+        <foreach item="deliveryId" collection="array" open="(" separator="," close=")">
+            #{deliveryId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteImsDeliveryItemByDeliveryId" parameterType="Long">
+        delete from ims_delivery_item where delivery_id = #{deliveryId}
+    </delete>
+
+    <insert id="batchImsDeliveryItem">
+        insert into ims_delivery_item( id, delivery_id, product_id, qty_piece, unit_price, amount, remark) values
+        <foreach item="item" index="index" collection="list" separator=",">
+            ( #{item.id}, #{item.deliveryId}, #{item.productId}, #{item.qtyPiece}, #{item.unitPrice}, #{item.amount}, #{item.remark})
+        </foreach>
+    </insert>
+</mapper>

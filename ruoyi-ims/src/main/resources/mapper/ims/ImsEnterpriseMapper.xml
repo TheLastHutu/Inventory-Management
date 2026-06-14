@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.ims.mapper.ImsEnterpriseMapper">
+    
+    <resultMap type="ImsEnterprise" id="ImsEnterpriseResult">
+        <result property="id"    column="id"    />
+        <result property="enterpriseCode"    column="enterprise_code"    />
+        <result property="enterpriseName"    column="enterprise_name"    />
+        <result property="legalPerson"    column="legal_person"    />
+        <result property="phone"    column="phone"    />
+        <result property="taxNo"    column="tax_no"    />
+        <result property="bankName"    column="bank_name"    />
+        <result property="bankAccount"    column="bank_account"    />
+        <result property="address"    column="address"    />
+        <result property="status"    column="status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectImsEnterpriseVo">
+        select id, enterprise_code, enterprise_name, legal_person, phone, tax_no, bank_name, bank_account, address, status, create_by, create_time, update_by, update_time, remark from ims_enterprise
+    </sql>
+
+    <select id="selectImsEnterpriseList" parameterType="ImsEnterprise" resultMap="ImsEnterpriseResult">
+        <include refid="selectImsEnterpriseVo"/>
+        <where>  
+            <if test="enterpriseCode != null  and enterpriseCode != ''"> and enterprise_code = #{enterpriseCode}</if>
+            <if test="enterpriseName != null  and enterpriseName != ''"> and enterprise_name like concat('%', #{enterpriseName}, '%')</if>
+            <if test="legalPerson != null  and legalPerson != ''"> and legal_person = #{legalPerson}</if>
+            <if test="taxNo != null  and taxNo != ''"> and tax_no = #{taxNo}</if>
+            <if test="bankName != null  and bankName != ''"> and bank_name like concat('%', #{bankName}, '%')</if>
+            <if test="status != null  and status != ''"> and status = #{status}</if>
+        </where>
+        order by create_time desc, id desc
+    </select>
+    
+    <select id="selectImsEnterpriseById" parameterType="Long" resultMap="ImsEnterpriseResult">
+        <include refid="selectImsEnterpriseVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertImsEnterprise" parameterType="ImsEnterprise" useGeneratedKeys="true" keyProperty="id">
+        insert into ims_enterprise
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="enterpriseCode != null and enterpriseCode != ''">enterprise_code,</if>
+            <if test="enterpriseName != null and enterpriseName != ''">enterprise_name,</if>
+            <if test="legalPerson != null">legal_person,</if>
+            <if test="phone != null">phone,</if>
+            <if test="taxNo != null">tax_no,</if>
+            <if test="bankName != null">bank_name,</if>
+            <if test="bankAccount != null">bank_account,</if>
+            <if test="address != null">address,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="enterpriseCode != null and enterpriseCode != ''">#{enterpriseCode},</if>
+            <if test="enterpriseName != null and enterpriseName != ''">#{enterpriseName},</if>
+            <if test="legalPerson != null">#{legalPerson},</if>
+            <if test="phone != null">#{phone},</if>
+            <if test="taxNo != null">#{taxNo},</if>
+            <if test="bankName != null">#{bankName},</if>
+            <if test="bankAccount != null">#{bankAccount},</if>
+            <if test="address != null">#{address},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateImsEnterprise" parameterType="ImsEnterprise">
+        update ims_enterprise
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="enterpriseCode != null and enterpriseCode != ''">enterprise_code = #{enterpriseCode},</if>
+            <if test="enterpriseName != null and enterpriseName != ''">enterprise_name = #{enterpriseName},</if>
+            <if test="legalPerson != null">legal_person = #{legalPerson},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="taxNo != null">tax_no = #{taxNo},</if>
+            <if test="bankName != null">bank_name = #{bankName},</if>
+            <if test="bankAccount != null">bank_account = #{bankAccount},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteImsEnterpriseById" parameterType="Long">
+        delete from ims_enterprise where id = #{id}
+    </delete>
+
+    <delete id="deleteImsEnterpriseByIds" parameterType="String">
+        delete from ims_enterprise where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

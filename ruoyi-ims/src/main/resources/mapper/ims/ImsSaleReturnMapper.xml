@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.ims.mapper.ImsSaleReturnMapper">
+    
+    <resultMap type="ImsSaleReturn" id="ImsSaleReturnResult">
+        <result property="id"    column="id"    />
+        <result property="billNo"    column="bill_no"    />
+        <result property="billDate"    column="bill_date"    />
+        <result property="enterpriseId"    column="enterprise_id"    />
+        <result property="enterpriseName"    column="enterprise_name"    />
+        <result property="customerId"    column="customer_id"    />
+        <result property="customerName"    column="customer_name"    />
+        <result property="warehouseId"    column="warehouse_id"    />
+        <result property="warehouseName"    column="warehouse_name"    />
+        <result property="sourceOutboundNo"    column="source_outbound_no"    />
+        <result property="reason"    column="reason"    />
+        <result property="totalQtyPiece"    column="total_qty_piece"    />
+        <result property="totalAmount"    column="total_amount"    />
+        <result property="billStatus"    column="bill_status"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <resultMap id="ImsSaleReturnImsSaleReturnItemResult" type="ImsSaleReturn" extends="ImsSaleReturnResult">
+        <collection property="imsSaleReturnItemList" ofType="ImsSaleReturnItem" column="id" select="selectImsSaleReturnItemList" />
+    </resultMap>
+
+    <resultMap type="ImsSaleReturnItem" id="ImsSaleReturnItemResult">
+        <result property="id"    column="id"    />
+        <result property="saleReturnId"    column="sale_return_id"    />
+        <result property="lineNo"    column="line_no"    />
+        <result property="productId"    column="product_id"    />
+        <result property="qtyPiece"    column="qty_piece"    />
+        <result property="unitPrice"    column="unit_price"    />
+        <result property="amount"    column="amount"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectImsSaleReturnVo">
+        select r.id, r.bill_no, r.bill_date, r.enterprise_id, e.enterprise_name,
+               r.customer_id, c.customer_name, r.warehouse_id, w.warehouse_name,
+               r.source_outbound_no, r.reason, r.total_qty_piece, r.total_amount,
+               r.bill_status, r.create_by, r.create_time, r.update_by, r.update_time, r.remark
+        from ims_sale_return r
+        left join ims_enterprise e on r.enterprise_id = e.id
+        left join ims_customer c on r.customer_id = c.id
+        left join ims_warehouse w on r.warehouse_id = w.id
+    </sql>
+
+    <select id="selectImsSaleReturnList" parameterType="ImsSaleReturn" resultMap="ImsSaleReturnResult">
+        <include refid="selectImsSaleReturnVo"/>
+        <where>  
+            <if test="billNo != null  and billNo != ''"> and r.bill_no = #{billNo}</if>
+            <if test="billDate != null and params.beginBillDate == null and params.endBillDate == null"> and r.bill_date = #{billDate}</if>
+            <if test="params.beginBillDate != null and params.beginBillDate != ''"> and date_format(r.bill_date,'%Y%m%d') &gt;= date_format(#{params.beginBillDate},'%Y%m%d')</if>
+            <if test="params.endBillDate != null and params.endBillDate != ''"> and date_format(r.bill_date,'%Y%m%d') &lt;= date_format(#{params.endBillDate},'%Y%m%d')</if>
+            <if test="enterpriseId != null "> and r.enterprise_id = #{enterpriseId}</if>
+            <if test="customerId != null "> and r.customer_id = #{customerId}</if>
+            <if test="warehouseId != null "> and r.warehouse_id = #{warehouseId}</if>
+            <if test="sourceOutboundNo != null  and sourceOutboundNo != ''"> and r.source_outbound_no = #{sourceOutboundNo}</if>
+            <if test="billStatus != null  and billStatus != ''"> and r.bill_status = #{billStatus}</if>
+        </where>
+        order by r.bill_date desc, r.create_time desc, r.id desc
+    </select>
+    
+    <select id="selectImsSaleReturnById" parameterType="Long" resultMap="ImsSaleReturnImsSaleReturnItemResult">
+        select id, bill_no, bill_date, enterprise_id, customer_id, warehouse_id, source_outbound_no, reason, total_qty_piece, total_amount, bill_status, create_by, create_time, update_by, update_time, remark
+        from ims_sale_return
+        where id = #{id}
+    </select>
+
+    <select id="selectImsSaleReturnItemList" resultMap="ImsSaleReturnItemResult">
+        select id, sale_return_id, line_no, product_id, qty_piece, unit_price, amount, remark
+        from ims_sale_return_item
+        where sale_return_id = #{sale_return_id}
+    </select>
+
+    <insert id="insertImsSaleReturn" parameterType="ImsSaleReturn" useGeneratedKeys="true" keyProperty="id">
+        insert into ims_sale_return
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="billNo != null and billNo != ''">bill_no,</if>
+            <if test="billDate != null">bill_date,</if>
+            <if test="enterpriseId != null">enterprise_id,</if>
+            <if test="customerId != null">customer_id,</if>
+            <if test="warehouseId != null">warehouse_id,</if>
+            <if test="sourceOutboundNo != null">source_outbound_no,</if>
+            <if test="reason != null">reason,</if>
+            <if test="totalQtyPiece != null">total_qty_piece,</if>
+            <if test="totalAmount != null">total_amount,</if>
+            <if test="billStatus != null and billStatus != ''">bill_status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="billNo != null and billNo != ''">#{billNo},</if>
+            <if test="billDate != null">#{billDate},</if>
+            <if test="enterpriseId != null">#{enterpriseId},</if>
+            <if test="customerId != null">#{customerId},</if>
+            <if test="warehouseId != null">#{warehouseId},</if>
+            <if test="sourceOutboundNo != null">#{sourceOutboundNo},</if>
+            <if test="reason != null">#{reason},</if>
+            <if test="totalQtyPiece != null">#{totalQtyPiece},</if>
+            <if test="totalAmount != null">#{totalAmount},</if>
+            <if test="billStatus != null and billStatus != ''">#{billStatus},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateImsSaleReturn" parameterType="ImsSaleReturn">
+        update ims_sale_return
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="billNo != null and billNo != ''">bill_no = #{billNo},</if>
+            <if test="billDate != null">bill_date = #{billDate},</if>
+            <if test="enterpriseId != null">enterprise_id = #{enterpriseId},</if>
+            <if test="customerId != null">customer_id = #{customerId},</if>
+            <if test="warehouseId != null">warehouse_id = #{warehouseId},</if>
+            <if test="sourceOutboundNo != null">source_outbound_no = #{sourceOutboundNo},</if>
+            <if test="reason != null">reason = #{reason},</if>
+            <if test="totalQtyPiece != null">total_qty_piece = #{totalQtyPiece},</if>
+            <if test="totalAmount != null">total_amount = #{totalAmount},</if>
+            <if test="billStatus != null and billStatus != ''">bill_status = #{billStatus},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteImsSaleReturnById" parameterType="Long">
+        delete from ims_sale_return where id = #{id}
+    </delete>
+
+    <delete id="deleteImsSaleReturnByIds" parameterType="String">
+        delete from ims_sale_return where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+    
+    <delete id="deleteImsSaleReturnItemBySaleReturnIds" parameterType="String">
+        delete from ims_sale_return_item where sale_return_id in 
+        <foreach item="saleReturnId" collection="array" open="(" separator="," close=")">
+            #{saleReturnId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteImsSaleReturnItemBySaleReturnId" parameterType="Long">
+        delete from ims_sale_return_item where sale_return_id = #{saleReturnId}
+    </delete>
+
+    <insert id="batchImsSaleReturnItem">
+        insert into ims_sale_return_item( id, sale_return_id, line_no, product_id, qty_piece, unit_price, amount, remark) values
+        <foreach item="item" index="index" collection="list" separator=",">
+            ( #{item.id}, #{item.saleReturnId}, #{item.lineNo}, #{item.productId}, #{item.qtyPiece}, #{item.unitPrice}, #{item.amount}, #{item.remark})
+        </foreach>
+    </insert>
+</mapper>

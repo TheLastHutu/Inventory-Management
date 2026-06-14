@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.ims.mapper.ImsStockFlowMapper">
+    
+    <resultMap type="ImsStockFlow" id="ImsStockFlowResult">
+        <result property="id"    column="id"    />
+        <result property="bizNo"    column="biz_no"    />
+        <result property="bizType"    column="biz_type"    />
+        <result property="bizId"    column="biz_id"    />
+        <result property="enterpriseId"    column="enterprise_id"    />
+        <result property="enterpriseName"    column="enterprise_name"    />
+        <result property="warehouseId"    column="warehouse_id"    />
+        <result property="warehouseName"    column="warehouse_name"    />
+        <result property="locationId"    column="location_id"    />
+        <result property="locationName"    column="location_name"    />
+        <result property="productId"    column="product_id"    />
+        <result property="productName"    column="product_name"    />
+        <result property="occurTime"    column="occur_time"    />
+        <result property="inout"    column="inout"    />
+        <result property="qtyPiece"    column="qty_piece"    />
+        <result property="unitPrice"    column="unit_price"    />
+        <result property="amount"    column="amount"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectImsStockFlowVo">
+        select f.id, f.biz_no, f.biz_type, f.biz_id, f.enterprise_id, e.enterprise_name,
+               f.warehouse_id, w.warehouse_name, f.location_id, l.location_name,
+               f.product_id, p.product_name, f.occur_time, f.`inout`, f.qty_piece,
+               f.unit_price, f.amount, f.create_by, f.create_time, f.remark
+        from ims_stock_flow f
+        left join ims_enterprise e on f.enterprise_id = e.id
+        left join ims_warehouse w on f.warehouse_id = w.id
+        left join ims_warehouse_location l on f.location_id = l.id
+        left join ims_product p on f.product_id = p.id
+    </sql>
+
+    <select id="selectImsStockFlowList" parameterType="ImsStockFlow" resultMap="ImsStockFlowResult">
+        <include refid="selectImsStockFlowVo"/>
+        <where>
+            <if test="bizNo != null  and bizNo != ''"> and f.biz_no = #{bizNo}</if>
+            <if test="bizType != null  and bizType != ''"> and f.biz_type = #{bizType}</if>
+            <if test="bizId != null "> and f.biz_id = #{bizId}</if>
+            <if test="enterpriseId != null "> and f.enterprise_id = #{enterpriseId}</if>
+            <if test="warehouseId != null "> and f.warehouse_id = #{warehouseId}</if>
+            <if test="locationId != null "> and f.location_id = #{locationId}</if>
+            <if test="productId != null "> and f.product_id = #{productId}</if>
+            <if test="occurTime != null and params.beginOccurTime == null and params.endOccurTime == null"> and f.occur_time = #{occurTime}</if>
+            <if test="params.beginOccurTime != null and params.beginOccurTime != ''"> and date_format(f.occur_time,'%Y%m%d') &gt;= date_format(#{params.beginOccurTime},'%Y%m%d')</if>
+            <if test="params.endOccurTime != null and params.endOccurTime != ''"> and date_format(f.occur_time,'%Y%m%d') &lt;= date_format(#{params.endOccurTime},'%Y%m%d')</if>
+            <if test="inout != null  and inout != ''"> and f.`inout` = #{inout}</if>
+        </where>
+        order by f.occur_time desc, f.create_time desc, f.id desc
+    </select>
+
+    <select id="selectImsStockFlowById" parameterType="Long" resultMap="ImsStockFlowResult">
+        <include refid="selectImsStockFlowVo"/>
+        where f.id = #{id}
+    </select>
+
+    <insert id="insertImsStockFlow" parameterType="ImsStockFlow" useGeneratedKeys="true" keyProperty="id">
+        insert into ims_stock_flow
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="bizNo != null and bizNo != ''">biz_no,</if>
+            <if test="bizType != null and bizType != ''">biz_type,</if>
+            <if test="bizId != null">biz_id,</if>
+            <if test="enterpriseId != null">enterprise_id,</if>
+            <if test="warehouseId != null">warehouse_id,</if>
+            <if test="locationId != null">location_id,</if>
+            <if test="productId != null">product_id,</if>
+            <if test="occurTime != null">occur_time,</if>
+            <if test="inout != null and inout != ''">`inout`,</if>
+            <if test="qtyPiece != null">qty_piece,</if>
+            <if test="unitPrice != null">unit_price,</if>
+            <if test="amount != null">amount,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="bizNo != null and bizNo != ''">#{bizNo},</if>
+            <if test="bizType != null and bizType != ''">#{bizType},</if>
+            <if test="bizId != null">#{bizId},</if>
+            <if test="enterpriseId != null">#{enterpriseId},</if>
+            <if test="warehouseId != null">#{warehouseId},</if>
+            <if test="locationId != null">#{locationId},</if>
+            <if test="productId != null">#{productId},</if>
+            <if test="occurTime != null">#{occurTime},</if>
+            <if test="inout != null and inout != ''">#{inout},</if>
+            <if test="qtyPiece != null">#{qtyPiece},</if>
+            <if test="unitPrice != null">#{unitPrice},</if>
+            <if test="amount != null">#{amount},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateImsStockFlow" parameterType="ImsStockFlow">
+        update ims_stock_flow
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="bizNo != null and bizNo != ''">biz_no = #{bizNo},</if>
+            <if test="bizType != null and bizType != ''">biz_type = #{bizType},</if>
+            <if test="bizId != null">biz_id = #{bizId},</if>
+            <if test="enterpriseId != null">enterprise_id = #{enterpriseId},</if>
+            <if test="warehouseId != null">warehouse_id = #{warehouseId},</if>
+            <if test="locationId != null">location_id = #{locationId},</if>
+            <if test="productId != null">product_id = #{productId},</if>
+            <if test="occurTime != null">occur_time = #{occurTime},</if>
+            <if test="inout != null and inout != ''">`inout` = #{inout},</if>
+            <if test="qtyPiece != null">qty_piece = #{qtyPiece},</if>
+            <if test="unitPrice != null">unit_price = #{unitPrice},</if>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteImsStockFlowById" parameterType="Long">
+        delete from ims_stock_flow where id = #{id}
+    </delete>
+
+    <delete id="deleteImsStockFlowByIds" parameterType="String">
+        delete from ims_stock_flow where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>
